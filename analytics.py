@@ -400,8 +400,13 @@ def _init_db():
             presence_s REAL NOT NULL,
             attention_s REAL NOT NULL,
             viewed INTEGER NOT NULL,
-            max_streak_s REAL NOT NULL
+            max_streak_s REAL NOT NULL,
+            synced INTEGER NOT NULL DEFAULT 0
         )""")
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(tracks)")}
+        if "synced" not in cols:  # migrate a DB created before the sync feature
+            conn.execute("ALTER TABLE tracks ADD COLUMN synced INTEGER NOT NULL DEFAULT 0")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tracks_synced ON tracks(synced)")
         conn.execute("""CREATE TABLE IF NOT EXISTS hourly (
             hour TEXT PRIMARY KEY,
             passersby INTEGER NOT NULL,

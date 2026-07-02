@@ -20,6 +20,7 @@ from flask import (
 
 import hotspot
 from analytics import AnalyticsEngine, export_csv
+from attention_sync import attention_sync
 from camera_manager import (
     CameraManager,
     PHOTO_DIR,
@@ -30,6 +31,7 @@ from camera_manager import (
 app = Flask(__name__)
 camera = CameraManager()
 analytics = AnalyticsEngine(camera, auto_start=True)
+attention_sync.start()
 
 
 # ---------------------------------------------------------------------- #
@@ -142,6 +144,11 @@ def api_analytics_set():
     if "enabled" in data:
         return jsonify({"ok": True, **analytics.set_enabled(data["enabled"])})
     return jsonify({"ok": True, **analytics.snapshot()})
+
+
+@app.route("/api/attention-sync")
+def api_attention_sync():
+    return jsonify(attention_sync.status())
 
 
 @app.route("/api/analytics/log.csv")
