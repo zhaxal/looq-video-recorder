@@ -1,0 +1,4 @@
+# picamera2, libcamera, numpy and simplejpeg come from the system packages
+# (apt: python3-picamera2) and are exposed via the venv's --system-site-packages.
+# Only Flask needs to be installed into the virtualenv.
+Flask>=3.0

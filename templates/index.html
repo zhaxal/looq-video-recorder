@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0b0d12" />
+  <title>Looq Camera</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">📷 Looq Camera</span>
+    <span id="status-pill" class="pill pill-off">connecting…</span>
+  </header>
+
+  <main>
+    <!-- Live preview -->
+    <section class="viewport" id="viewport">
+      <img id="preview" alt="live preview" />
+      <canvas id="overlay" class="overlay"></canvas>
+      <div id="stats-hud" class="stats-hud hidden">
+        <span class="stat"><b id="stat-live">0</b> now</span>
+        <span class="stat"><b id="stat-looking">0</b> looking</span>
+        <span class="stat"><b id="stat-unique">0</b> total</span>
+        <span class="stat"><b id="stat-viewed">0</b> viewed</span>
+        <span class="stat"><b id="stat-dwell">0s</b> avg look</span>
+      </div>
+      <div id="calib-badge" class="calib-badge hidden">
+        Look at the ad… <b id="calib-time">5s</b>
+      </div>
+      <div id="rec-badge" class="rec-badge hidden">
+        <span class="dot"></span><span id="rec-time">00:00</span>
+      </div>
+      <div id="offline" class="offline hidden">
+        <p id="offline-msg">Camera offline</p>
+        <button id="reconnect-btn" class="btn">Reconnect</button>
+      </div>
+      <div id="flash" class="flash"></div>
+    </section>
+
+    <!-- Primary controls -->
+    <section class="controls">
+      <button id="photo-btn" class="btn round" title="Take photo">⚪</button>
+      <button id="record-btn" class="btn round record" title="Record">⬤</button>
+      <button id="ai-btn" class="btn round ai" title="Toggle AI (people analytics)">🧠</button>
+      <button id="settings-btn" class="btn round" title="Settings">⚙️</button>
+      <button id="gallery-btn" class="btn round" title="Gallery">🖼️</button>
+    </section>
+    <p id="toast" class="toast hidden"></p>
+  </main>
+
+  <!-- Settings drawer -->
+  <div id="settings-panel" class="panel hidden">
+    <div class="panel-head">
+      <h2>Settings</h2>
+      <button class="btn ghost" data-close>✕</button>
+    </div>
+    <label>Resolution
+      <select id="set-resolution">
+        {% for r in resolutions %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Frame rate
+      <select id="set-fps">
+        <option value="15">15 fps</option>
+        <option value="24">24 fps</option>
+        <option value="30">30 fps</option>
+        <option value="60">60 fps</option>
+      </select>
+    </label>
+    <label>Autofocus
+      <select id="set-autofocus">
+        <option value="continuous">Continuous</option>
+        <option value="auto">Single (tap to focus)</option>
+        <option value="manual">Manual</option>
+      </select>
+    </label>
+    <label id="lens-row" class="hidden">Focus distance
+      <input type="range" id="set-lens" min="0" max="10" step="0.25" value="1" />
+    </label>
+    <label>Rotation
+      <select id="set-rotation">
+        <option value="0">0°</option>
+        <option value="90">90°</option>
+        <option value="180">180°</option>
+        <option value="270">270°</option>
+      </select>
+    </label>
+    <div class="checks">
+      <label class="inline"><input type="checkbox" id="set-hflip" /> Flip horizontal</label>
+      <label class="inline"><input type="checkbox" id="set-vflip" /> Flip vertical</label>
+    </div>
+    <p class="hint">Recording must be stopped to change resolution/rotation.</p>
+
+    <div id="analytics-row" class="hotspot-row">
+      <label class="inline switch-row">
+        <span>People analytics</span>
+        <input type="checkbox" id="set-analytics" />
+      </label>
+      <p class="hint">Tracks people live on the Hailo accelerator and measures who
+        looks at the ad and for how long (head pose, not gaze — no images or
+        identities are stored). Overlay: green box = looking, blue = tracked.</p>
+      <div class="row-actions">
+        <button id="analytics-reset" class="btn ghost">Reset count</button>
+        <a id="analytics-csv" class="btn ghost" href="/api/analytics/log.csv">⬇ CSV log</a>
+      </div>
+      <p class="hint" id="analytics-status"></p>
+
+      <div class="row-actions">
+        <button id="analytics-calibrate" class="btn ghost">🎯 Calibrate (5s)</button>
+      </div>
+      <p class="hint">Stand where people usually view the ad, look straight at it,
+        tap Calibrate, and hold your gaze on the ad until the countdown ends. This
+        measures the head-pose offset between "looking at the camera" and "looking
+        at the ad" so the two aren't confused.</p>
+      <p class="hint" id="calib-offsets"></p>
+    </div>
+
+    <div id="hotspot-row" class="hotspot-row hidden">
+      <label class="inline switch-row">
+        <span>WiFi hotspot</span>
+        <input type="checkbox" id="set-hotspot" />
+      </label>
+      <p class="hint warn">
+        Turning this off shuts down the Pi's access point. If you are connected
+        through it you will be disconnected.
+      </p>
+    </div>
+  </div>
+
+  <!-- Gallery drawer -->
+  <div id="gallery-panel" class="panel hidden">
+    <div class="panel-head">
+      <h2>Gallery</h2>
+      <button class="btn ghost" data-close>✕</button>
+    </div>
+    <div id="gallery-grid" class="grid"></div>
+    <p id="gallery-empty" class="hint hidden">No photos or videos yet.</p>
+  </div>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox hidden">
+    <button class="btn ghost lb-close" data-lb-close>✕</button>
+    <div id="lightbox-body"></div>
+    <div class="lb-actions">
+      <a id="lb-download" class="btn" download>⬇ Download</a>
+      <button id="lb-delete" class="btn danger">🗑 Delete</button>
+    </div>
+  </div>
+
+  <div id="backdrop" class="backdrop hidden"></div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

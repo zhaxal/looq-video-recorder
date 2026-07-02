@@ -1,0 +1,17 @@
+[Unit]
+Description=Looq Video Recorder web app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__PROJECT_DIR__
+ExecStart=__PROJECT_DIR__/venv/bin/python __PROJECT_DIR__/app.py
+Restart=on-failure
+RestartSec=3
+# Camera/media writes need a real home + runtime dir:
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

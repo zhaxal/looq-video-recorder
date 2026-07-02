@@ -1,0 +1,8 @@
+venv/
+media/photos/
+media/videos/
+media/analytics/
+__pycache__/
+*.pyc
+*.swp
+*.log
